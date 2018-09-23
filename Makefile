@@ -13,8 +13,8 @@ INC = -I.
 
 all: $(APP)
 
-OBJS = my_joystick.o listop.o com.o uart.o
-SRC = my_joystick.cpp listop.cpp com.cpp uart.cpp
+OBJS = my_joystick.o listop.o com.o uart.o my_socket_c.o
+SRC = my_joystick.cpp listop.cpp com.cpp uart.cpp my_socket_c.cpp
 
 $(APP):$(OBJS)
 	$(CPP) $(CFLAGS) -o $@ $(OBJS) $(LDFLAGS) 

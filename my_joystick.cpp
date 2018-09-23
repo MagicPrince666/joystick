@@ -8,6 +8,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <linux/joystick.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <netdb.h>
 //#include <linux/list.h> /*郁闷，不能直接使用linux自带的list链表，需要单独提取出来，见前面的code*/
 #include "listop.h"
 
@@ -174,6 +178,10 @@ typedef struct _axes_t {
     int y;
 } AXES_T;
 
+int port=1234;
+int socket_descriptor; //套接口描述字
+struct sockaddr_in address;//处理网络通信的地址
+
 int main(int argc, char* argv[])
 {
     int fd, rc;
@@ -186,6 +194,19 @@ int main(int argc, char* argv[])
     int i, print_init_stat = 0;
 
     struct js_event jse;
+
+    int opt = 1;
+    char buf[80]={0};
+
+    bzero(&address,sizeof(address));
+    address.sin_family=AF_INET;
+    address.sin_addr.s_addr=inet_addr("192.168.3.42");//这里不一样
+    address.sin_port=htons(port);
+
+    //创建一个 UDP socket
+    socket_descriptor = socket(AF_INET,SOCK_DGRAM,0);//IPV4  SOCK_DGRAM 数据报套接字（UDP协议）
+    setsockopt(socket_descriptor,SOL_SOCKET,SO_REUSEADDR,&opt,sizeof(&opt));
+    
 
     fd = joystick_open("/dev/input/js0", 1);
     if (fd < 0) {
@@ -270,6 +291,39 @@ int main(int argc, char* argv[])
                                 tp_axes[jse.number / 2].y = jse.value;
                             }
                             LOG_DBG("joystick state: axes %d is x=%d  y=%d.\n", jse.number / 2, tp_axes[jse.number / 2].x, tp_axes[jse.number / 2].y);
+                            char *str = NULL;
+                            if(1)
+                            {
+                                str = (char*)(&(tp_axes[jse.number / 2].x));
+                                buf[0] = str[0];
+                                buf[1] = str[1];
+                                buf[2] = str[2];
+                                buf[3] = str[3];
+
+                                str = (char*)&(tp_axes[jse.number / 2].y);
+                                buf[4] = str[0];
+                                buf[5] = str[1];
+                                buf[6] = str[2];
+                                buf[7] = str[3];
+                            }
+                            /*
+                            else if((jse.number / 2 == 0) || (jse.number / 2 == 1))
+                            {
+                                str = (char*)(&(tp_axes[jse.number / 2].y));
+                                buf[0] = str[0];
+                                buf[1] = str[1];
+                                buf[2] = str[2];
+                                buf[3] = str[3];
+
+                                str = (char*)&(tp_axes[jse.number / 2].x);
+                                buf[4] = str[0];
+                                buf[5] = str[1];
+                                buf[6] = str[2];
+                                buf[7] = str[3];
+                            }
+                            */
+                            //buf[9] = 0;
+                            sendto(socket_descriptor,buf,8,0,(struct sockaddr *)&address,sizeof(address));
                         }
                         else {
                             LOG_DBG("joystick state: axes %d is %s=%d.\n", jse.number / 2, ((jse.number & 1) == 0) ? "x" : "y", jse.value);
